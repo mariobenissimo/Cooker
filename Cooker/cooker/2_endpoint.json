@@ -1,0 +1,29 @@
+{
+  "endpoint": "http://apigateway:8000/auth/user",
+  "method": "post",
+  "authentication": {
+    "method": "JWT",
+    "secret": "secret"
+  },
+  "parameters": [
+    {
+      "name": "Nome",
+      "type": "string",
+      "correctValue": "aa",
+      "maxLength": 50,
+      "range": null
+    },
+    {
+      "name": "Età",
+      "type": "int",
+      "correctValue": 10,
+      "maxLength": null,
+      "range": "1-100"
+    }
+  ],
+  "expectationLength": null,
+  "limiter": {
+    "maxRequests": 10,
+    "seconds": 1
+  }
+}

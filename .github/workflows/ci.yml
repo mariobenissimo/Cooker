@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: docker:20.10.7
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+          docker-compose --version
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19.1
+
+      - name: Build and run Docker Compose
+        run: |
+          docker-compose -f docker-compose.yml up -d
+          docker ps
+
+      - name: Wait for services to start
+        run: |
+          echo "start first sleep"
+          sleep 20
+
+      - name: Print Container
+        run: |
+          docker exec cooker go test ./...
+
+      - name: Wait for services to start
+        run: |
+          echo "start second sleep"
+          sleep 20
+
+      - name: Stop Docker Compose
+        run: docker-compose -f docker-compose.yml down

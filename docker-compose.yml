@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+  apigateway:
+    image: golang:latest
+    container_name: apigateway
+    volumes:
+      - ./gateway:/app
+    working_dir: /app
+    command: go run cmd/main.go
+    ports:
+      - "8000:8000"
+    networks:
+      - net
+
+  servizio1:
+    image: golang:latest
+    container_name: servizio1
+    volumes:
+      - ./server:/app
+    working_dir: /app
+    command: go run cmd/main.go
+    ports:
+      - "8088:8088"
+    networks:
+      - net
+
+  cooker:
+    image: golang:latest
+    container_name: cooker
+    volumes:
+      - ./Cooker:/app
+    working_dir: /app
+    command: sh -c "go run cmd/main.go & tail -f /dev/null"
+    ports:
+      - "8082:8082"
+    networks:
+      - net
+
+networks:
+  net:
+    driver: bridge

@@ -1,0 +1,16 @@
+{
+  "endpoint": "http://apigateway:8000/user",
+  "method": "get",
+  "parameters": [
+      {
+          "name": "id",
+          "type": "uuid",
+          "correctValue": "550e8400-e29b-41d4-a716-446655440000"
+      }
+  ],
+  "expectationLength": 1,
+  "limiter": {
+    "maxRequests": 10,
+    "seconds": 1
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "endpoint": "http://apigateway:8000/user",
+  "method": "get",
+  "expectationLength": 2,
+  "limiter": {
+    "maxRequests": 10,
+    "seconds": 1
+  }
+}

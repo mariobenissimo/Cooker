@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooker</title>
+    <style>
+        body {
+            display: flex;
+            height: 100%;
+            margin: 0;
+        }
+
+        #jsonInputContainer {
+            flex: 1;
+            padding: 20px;
+            /* height: 100%; */
+            display: flex;
+            background-color: #f0f0f0;
+            flex-direction: column;
+        }
+
+        #jsonInput {
+            width: 100%;
+            height: 100%;
+        }
+
+        #resultContainer {
+            flex: 1;
+            padding: 20px;
+        }
+
+        #rulesList {
+            margin-bottom: 20px;
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #rulesList li {
+            margin-bottom: 5px;
+        }
+
+        #saveButton, #newButton {
+            display: block;
+            margin-top: 10px;
+        }
+
+        #savedJsonList {
+            margin-top: 20px;
+        }
+
+        #savedJsonList button {
+            margin-right: 10px;
+        }
+        .button-container {
+            display: flex;
+        }
+        .button-container button {
+            margin: 10px;
+        }
+        table {
+        border-collapse: collapse;
+        width: 100%;
+        }
+
+        th, td {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+        }
+
+        th {
+        background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+<div id="jsonInputContainer">
+    <h2>Insert your JSON here:</h2>
+    <div id="idJson" hidden>-1</div>
+    <textarea id="jsonInput" placeholder="Insert your JSON here"></textarea>
+    <h2>Result:</h2>
+    <pre id="resultOutput"></pre>
+    <div class="button-container">
+        <button id="saveButton" onclick="saveJSON()">Save JSON</button>
+        <button id="newButton" onclick="insertNewJSON()">New JSON</button>
+        <button id="getDummyButton">Get Dummy JSON</button>
+        <button id="sendButton">Send JSON</button>
+    </div>
+</div>
+
+<div id="resultContainer">
+    <h2>Rules:</h2>
+        <table>
+            <tr>
+              <th>Key</th>
+              <th>Type</th>
+              <th>Accepted only</th>
+              <th>Mandatory</th>
+            </tr>
+            <tr>
+              <td>endpoint</td>
+              <td>string</td>
+              <td> / </td>
+              <td>yes</td>
+            </tr>
+            <tr>
+              <td>method</td>
+              <td>string</td>
+              <td> get - post </td>
+              <td>yes</td>
+            </tr>
+            <tr>
+              <td>parameters</td>
+              <td>array</td>
+              <td>
+                <table>
+                    <tr>
+                        <th>Key</th>
+                        <th>Type</th>
+                        <th>Accepted only</th>
+                        <th>Mandatory</th>
+                      </tr>
+                  <tr>
+                    <td>name</td>
+                    <td>string</td>
+                    <td> / </td>
+                    <td>yes</td>
+                  </tr>
+                  <tr>
+                    <td>type</td>
+                    <td>string</td>
+                    <td>int - string - uuid </td>
+                    <td>yes</td>
+                  </tr>
+                  <tr>
+                    <td>correctValue</td>
+                    <td>depend on parameter</td>
+                    <td>int - string - uuid  </td>
+                    <td>yes</td>
+                  </tr>
+                  <tr>
+                    <td>range</td>
+                    <td>string</td>
+                    <td> formatted: "1-100" e.g. </td>
+                    <td>yes if type is int</td>
+                  </tr>
+                  <tr>
+                    <td>maxLength</td>
+                    <td>int</td>
+                    <td> / </td>
+                    <td>yes if type is string</td>
+                  </tr>
+                </table>
+              </td>
+              <td>no</td>
+            </tr>
+            <tr>
+              <td>authentication</td>
+              <td> string</td>
+              <td>
+                <table>
+                  <tr>
+                    <tr>
+                        <th>Key</th>
+                        <th>Type</th>
+                        <th>Accepted only</th>
+                        <th>Mandatory</th>
+                      </tr>
+                    <td>method</td>
+                    <td>string</td>
+                    <td>JWT </td>
+                    <td>yes</td>
+                  </tr>
+                  <tr>
+                    <td>secret</td>
+                    <td>string</td>
+                    <td> / </td>
+                    <td>yes if method is JWT</td>
+                  </tr>
+                </table>
+              </td>
+              <td> no</td>
+            </tr>
+            <tr>
+                <td>limiter</td>
+                <td> object </td>
+                <td>
+                    <table>
+                        <tr>
+                            <th>Key</th>
+                            <th>Type</th>
+                            <th>Accepted only</th>
+                            <th>Mandatory</th>
+                          </tr>
+                      <tr>
+                        <td>maxRequests</td>
+                        <td>int</td>
+                        <td> / </td>
+                        <td>yes</td>
+                      </tr>
+                      <tr>
+                        <td>seconds</td>
+                        <td>int</td>
+                        <td> / </td>
+                        <td>yes</td>
+                      </tr>
+                    </table>
+                </td>
+                <td>no</td>
+          </table>
+    <p> For more details try dummy json for json example or view github repo: </p>
+    <div id="infoJson">
+    </div>
+    <h2>Saved JSON:</h2>
+    <div id="savedJsonList" style="padding-bottom: 50px;"></div>
+</div>
+
+<script>
+    // Variabile per salvare l'ultimo JSON corretto
+    var lastValidJSON = null;
+    var jsons = [];
+    var nunJson = 0;
+    var jsonList = [
+        {
+            "endpoint": "http://localhost:8000/user",
+            "method": "get",
+            "parameters": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "correctValue": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            ],
+            "expectationLength": 1,
+            "limiter": {
+    "maxRequests": 10,
+    "seconds": 1
+  }
+        },
+        {
+            "endpoint": "http://localhost:8000/user",
+            "method": "get",
+            "expectationLength": 2,
+            "limiter": {
+    "maxRequests": 10,
+    "seconds": 1
+  }
+        },
+        {
+	    "endpoint": "localhost::8000/user",
+	    "method": "post",
+	    "authentication": {
+	        "method": "JWT",
+	        "secret": "secret"
+	    },
+	    "parameters": [
+	      {
+	        "name": "Nome",
+	        "type": "string",
+	        "correctValue": "aa",
+	        "maxLength": 50
+	      },
+	      {
+	        "name": "Età",
+	        "type": "int",
+	        "correctValue": 10,
+	        "range": "1-100"
+	      }
+	    ],
+	    "limiter": {
+    "maxRequests": 10,
+    "seconds": 1
+  }
+        }
+    ]; // Array to store JSON objects
+    var jsonInfo = [
+        "This endpoint is configured to accept the GET method and requires the specification of certain essential parameters. It is necessary to provide mandatory fields such as 'name','type', and 'correctvalue', along with the 'endpoint' and 'method' fields. In the case of a GET request, it is crucial to include the 'expectationLength' parameter, representing the expected number of elements returned in the response body.Optionally, the 'limiter' attribute is available if you wish to conduct a functional test based on the rate limiter.",
+        "",
+    ];
+    var currentIndex = 0; // Index to track the current JSON
+
+    // Funzione per validare e visualizzare il JSON
+    function validateAndDisplayJSON() {
+        var jsonInput = document.getElementById('jsonInput').value;
+        var resultOutput = document.getElementById('resultOutput');
+        var rulesList = document.getElementById('rulesList');
+
+        try {
+            var parsedJSON = JSON.parse(jsonInput);
+
+            // Validazione delle regole
+            if (parsedJSON.parameters){
+                validateParameters(parsedJSON.parameters);
+            }
+            validateFields(parsedJSON);
+
+            // Se il JSON è valido, salvalo nella variabile
+            lastValidJSON = parsedJSON;
+
+            resultOutput.textContent = JSON.stringify(parsedJSON, null, 2);
+        } catch (error) {
+            resultOutput.textContent = 'Errore nel parsing del JSON: ' + error.message;
+        }
+    }
+
+    // Funzione per salvare il JSON
+    function saveJSON() {
+        if (lastValidJSON) {
+            // Fai qualcosa con il JSON valido, ad esempio invialo al server
+            alert('JSON salvato con successo:\n\n' + JSON.stringify(lastValidJSON, null, 2));
+            var idJson = parseInt(document.getElementById('idJson').textContent);
+            var jsonButton
+            if (idJson !== -1) {
+                // L'id è presente si può sostituire
+                console.log(idJson)
+                console.log(lastValidJSON)
+                jsons[idJson] = lastValidJSON;
+                console.log(jsons)
+            }else {
+                // Aggiungi un pulsante nella lista dei JSON salvati
+                var savedJsonList = document.getElementById('savedJsonList');
+                jsons[savedJsonList.children.length] = lastValidJSON;
+                jsonButton = document.createElement('button');
+                jsonButton.textContent = 'JSON Salvato ' + (savedJsonList.children.length + 1);
+                jsonButton.id = savedJsonList.children.length
+                nunJson++;
+                jsonButton.onclick = function () {
+                    // Inserisci il JSON salvato nella textarea
+                    var buttonId = this.id;
+                    jsonString = JSON.stringify(jsons[buttonId], null, 2);
+                    document.getElementById('jsonInput').value = jsonString
+                    document.getElementById('idJson').textContent = buttonId;
+                    validateAndDisplayJSON();
+                };
+                document.getElementById('idJson').textContent = savedJsonList.children.length;
+                savedJsonList.appendChild(jsonButton);
+            }
+        } else {
+            alert('Nessun JSON valido da salvare.');
+        }
+    }
+
+    // Funzione per inserire un nuovo JSON
+    function insertNewJSON() {
+        document.getElementById('jsonInput').value = '';
+        document.getElementById('resultOutput').textContent = '';
+        document.getElementById('idJson').textContent = -1;
+        lastValidJSON = null;
+    }
+
+    // Funzione per validare i parametri
+    function validateParameters(parameters) {
+
+        parameters.forEach(function (param) {
+            if (!param.name || !param.type || !param.correctValue) {
+                throw new Error('Ogni parametro deve avere "name", "type" e "correctValue".');
+            }
+
+            if (param.type !== 'string' && param.type !== 'int' && param.type !== 'uuid') {
+                throw new Error('Il campo "type" può essere solo "string", "int" o "uuid".');
+            }
+        });
+    }
+
+    // Funzione per validare i campi del JSON
+    function validateFields(json) {
+        if (!json.endpoint || !json.method) {
+            throw new Error('Ogni JSON deve avere i campi "endpoint", "method".');
+        }
+    }
+    function getDummyJSON() {
+        document.getElementById('idJson').textContent = -1;
+        var divElement = document.getElementById("infoJson");
+        var h2Element = divElement.querySelector("h2");
+        if (h2Element) {
+            divElement.removeChild(h2Element);
+        }
+        var pElement = divElement.querySelector("p");
+        if (pElement) {
+            divElement.removeChild(pElement);
+        }
+        var currentJSON = jsonList[currentIndex];
+        var h2 = document.createElement('h2');
+        h2.textContent = 'Info';
+        var p = document.createElement('p');
+        p.textContent = jsonInfo[currentIndex];
+        document.getElementById('jsonInput').value = JSON.stringify(currentJSON, null, 2);
+        currentIndex = (currentIndex + 1) % jsonList.length; // Cycle through the JSONs
+        divElement.appendChild(h2);
+        divElement.appendChild(p);
+        validateAndDisplayJSON()
+    }
+
+
+    function sendJSON() {
+        var endpointUrl = 'http://localhost:8082/json';
+        
+   // Options for the fetch request
+    var requestOptions = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            // Add any other headers if needed
+        },
+        body: JSON.stringify(jsons),
+    };
+    console.log(JSON.stringify(jsons))
+    console.log(endpointUrl)
+    // Make the fetch request
+    fetch(endpointUrl, requestOptions)
+        .then(response => response.json())
+        .then(data => {
+            alert('Response from the server:', data.message);
+        })
+        .catch(error => {
+            alert('Error:', error);
+        });
+    }
+    // Attiva la funzione al caricamento della pagina e ad ogni modifica della textarea
+    window.addEventListener('load', validateAndDisplayJSON);
+    document.getElementById('jsonInput').addEventListener('input', validateAndDisplayJSON);
+    document.getElementById('getDummyButton').addEventListener('click', getDummyJSON);
+    document.getElementById('sendButton').addEventListener('click', sendJSON);
+</script>
+
+</body>
+</html>
