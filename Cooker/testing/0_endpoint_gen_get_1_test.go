@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGetCorrectValue2_endpoint(t *testing.T) {
+func TestGetCorrectValue0_endpoint(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://apigateway:8000/user", nil)
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
@@ -18,5 +18,5 @@ func TestGetCorrectValue2_endpoint(t *testing.T) {
 	jsonResponse := []map[string]interface{}{}
 	err = json.NewDecoder(resp.Body).Decode(&jsonResponse)
 	assert.NoError(t, err)
-	assert.Equal(t, len(jsonResponse), 2, "Expected at least two values in the response")
+	assert.Equal(t, len(jsonResponse), 2, "Expected TODO in the response")
 }

@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"bytes"
@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-func TestPostIncorrectIntValueBoolean10_endpoint(t *testing.T) {
+func TestPostUpperIntValue12_endpoint(t *testing.T) {
 	requestPayload := map[string]interface {
-	}{"Nome": "aa", "Età": true}
+	}{"Età": "unsupported", "Nome": "aa"}
 	requestBody, err := json.Marshal(requestPayload)
 	assert.NoError(t, err)
 	req, err := http.NewRequest("POST", "http://apigateway:8000/auth/user", bytes.NewBuffer(requestBody))

@@ -43,7 +43,7 @@ func Cook(directoryPath string) {
 			}
 
 			// Print the populated struct
-			fmt.Printf("File: %s\n%+v\n\n", path, apiConfig)
+			fmt.Printf("File: %s\n", path)
 			err = checkApiConfig(apiConfig)
 			if err != nil {
 				fmt.Println("Error checking correcting json", err)

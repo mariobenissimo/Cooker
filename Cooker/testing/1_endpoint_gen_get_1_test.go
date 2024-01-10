@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"encoding/json"
@@ -18,5 +18,5 @@ func TestGetCorrectValue1_endpoint(t *testing.T) {
 	jsonResponse := []map[string]interface{}{}
 	err = json.NewDecoder(resp.Body).Decode(&jsonResponse)
 	assert.NoError(t, err)
-	assert.Equal(t, len(jsonResponse), 1, "Expected at least two values in the response")
+	assert.Equal(t, len(jsonResponse), 1, "Expected TODO in the response")
 }

@@ -17,64 +17,8 @@ func generateRateLimiterGet(auth bool, nameFile string, nameTest string, method 
 func generateRateLimiterPost(auth bool, nameFile, nameTest string, method string, endpoint string, payload ast.AssignStmt, maxRequest int, seconds int) {
 	generateTestFunctionBodyPost(auth, nameFile, nameTest, method, endpoint, payload, maxRequest, seconds)
 }
-func generateTestFunctionBodyPost(auth bool, nameFile, nameTest string, method string, endpoint string, payload ast.AssignStmt, maxRequest int, seconds int) {
-	// Create an AST node for the function body
-	fset := token.NewFileSet()
-
-	// Importa i pacchetti necessari
-	importTestify := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"github.com/stretchr/testify/assert"`,
-		},
-	}
-
-	importHTTP := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"net/http"`,
-		},
-	}
-
-	importTesting := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"testing"`,
-		},
-	}
-	importTime := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"time"`,
-		},
-	}
-	importBytes := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"bytes"`,
-		},
-	}
-
-	importJSON := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"encoding/json"`,
-		},
-	}
-	importDecl := &ast.GenDecl{}
-	if method == "POST" {
-		importDecl = &ast.GenDecl{
-			Tok:   token.IMPORT,
-			Specs: []ast.Spec{importJSON, importBytes, importTesting, importHTTP, importTestify, importTime},
-		}
-	} else if method == "GET" {
-		importDecl = &ast.GenDecl{
-			Tok:   token.IMPORT,
-			Specs: []ast.Spec{importTesting, importTestify, importHTTP, importTestify, importTime},
-		}
-	}
-	// Add the test logic
-	startTime := &ast.AssignStmt{
+func CreateStartTimeStm() *ast.AssignStmt {
+	return &ast.AssignStmt{
 		Lhs: []ast.Expr{&ast.Ident{Name: "startTime"}},
 		Tok: token.DEFINE,
 		Rhs: []ast.Expr{&ast.CallExpr{
@@ -84,29 +28,34 @@ func generateTestFunctionBodyPost(auth bool, nameFile, nameTest string, method s
 			},
 		}},
 	}
-
-	AssignI := &ast.AssignStmt{
-		Lhs: []ast.Expr{&ast.Ident{Name: "i"}},
+}
+func CreateBasicStm(key, value string) *ast.AssignStmt {
+	return &ast.AssignStmt{
+		Lhs: []ast.Expr{&ast.Ident{Name: key}},
 		Tok: token.DEFINE,
-		Rhs: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "0"}},
+		Rhs: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: value}},
 	}
-
-	BodyFor := &ast.ForStmt{
+}
+func CreateFor(key string, statusCode string, maxRequest int) *ast.ForStmt {
+	return &ast.ForStmt{
 		Cond: &ast.BinaryExpr{
-			X:  &ast.Ident{Name: "i"},
+			X:  &ast.Ident{Name: key},
 			Op: token.LSS,
 			Y:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(maxRequest)},
 		},
 		Post: &ast.IncDecStmt{
-			X:   &ast.Ident{Name: "i"},
+			X:   &ast.Ident{Name: key},
 			Tok: token.INC,
 		},
 		Body: &ast.BlockStmt{
-			List: generateForLoopBody(),
+			List: generateForLoopBody(statusCode),
 		},
 	}
+}
 
-	endTime := &ast.AssignStmt{
+// endTime := time.Now()
+func CreateEndTime() *ast.AssignStmt {
+	return &ast.AssignStmt{
 		Lhs: []ast.Expr{&ast.Ident{Name: "endTime"}},
 		Tok: token.DEFINE,
 		Rhs: []ast.Expr{&ast.CallExpr{
@@ -116,8 +65,11 @@ func generateTestFunctionBodyPost(auth bool, nameFile, nameTest string, method s
 			},
 		}},
 	}
+}
 
-	elapsedTime := &ast.AssignStmt{
+// elapsedTime := endTime.Sub(startTime)
+func CreateElapsedTime() *ast.AssignStmt {
+	return &ast.AssignStmt{
 		Lhs: []ast.Expr{&ast.Ident{Name: "elapsedTime"}},
 		Tok: token.DEFINE,
 		Rhs: []ast.Expr{&ast.CallExpr{
@@ -128,19 +80,24 @@ func generateTestFunctionBodyPost(auth bool, nameFile, nameTest string, method s
 			Args: []ast.Expr{&ast.Ident{Name: "startTime"}},
 		}},
 	}
+}
 
-	ifElapsed := &ast.IfStmt{
+func CreateIfElapsed(seconds int) *ast.IfStmt {
+	return &ast.IfStmt{
 		Cond: &ast.BinaryExpr{
 			X:  &ast.SelectorExpr{X: &ast.Ident{Name: "elapsedTime"}, Sel: &ast.Ident{Name: "Seconds()"}},
 			Op: token.LSS,
 			Y:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(seconds)},
 		},
 		Body: &ast.BlockStmt{
-			List: generateRateLimitExceededCheck(),
+			List: CreateRequest(HTTPSTATUS_TOOMANYREQUEST),
 		},
 	}
+}
 
-	sleepTime := &ast.ExprStmt{
+// time.Sleep(seconds * time.Second)
+func CreateSleep(seconds int) *ast.ExprStmt {
+	return &ast.ExprStmt{
 		X: &ast.CallExpr{
 			Fun: &ast.SelectorExpr{
 				X:   &ast.Ident{Name: "time"},
@@ -156,225 +113,83 @@ func generateTestFunctionBodyPost(auth bool, nameFile, nameTest string, method s
 			}},
 		},
 	}
-
-	// Verifica che la quarta richiesta sia consentita dopo l'attesa
-	lastRequest := &ast.AssignStmt{
-		Lhs: []ast.Expr{&ast.Ident{Name: "resp"}, &ast.Ident{Name: "err"}},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun: &ast.Ident{Name: "makeRequest"},
-		}},
-	}
-	lastAssertNoError := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "assert"},
-				Sel: &ast.Ident{Name: "NoError"},
-			},
-			Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.Ident{Name: "err"}},
-		},
-	}
-	lastAsserEqual := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "assert"},
-				Sel: &ast.Ident{Name: "Equal"},
-			},
-			Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.BasicLit{Kind: token.INT, Value: "http.StatusOK"}, &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "resp"},
-				Sel: &ast.Ident{Name: "StatusCode"},
-			}},
-		},
-	}
-
-	stmts := []ast.Stmt{
-		sleepTime,
-		generaMakeRequestPost(auth, method, endpoint, payload),
-		startTime,
-		AssignI,
-		BodyFor,
-		endTime,
-		elapsedTime,
-		ifElapsed,
-		sleepTime,
-		lastRequest,
-		lastAssertNoError,
-		lastAsserEqual,
-	}
-
-	// Create a string builder to hold the generated source code
-	var buf strings.Builder
-
-	// Create a new function
-	funcDecl := &ast.FuncDecl{
-		Name: &ast.Ident{Name: nameTest},
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
-					{Names: []*ast.Ident{{Name: "t"}}, Type: &ast.Ident{Name: "*testing.T"}},
-				},
-			},
-			Results: &ast.FieldList{},
-		},
-		Body: &ast.BlockStmt{
-			List: stmts,
-		},
-	}
-	decls := []ast.Decl{importDecl, funcDecl}
-
-	// Create a new file
-	file := &ast.File{
-		Name:  &ast.Ident{Name: "main"},
-		Decls: decls,
-	}
-
-	// Aggiungi le importazioni e la funzione di test alla lista di dichiarazioni
-
-	// Stampa il codice sorgente generato nel buffer
-	err := printer.Fprint(&buf, fset, file)
-	if err != nil {
-		fmt.Println("Error printing code:", err)
-		return
-	}
-	// Formatta il codice sorgente nel buffer
-	formattedCode, err := format.Source([]byte(buf.String()))
-	if err != nil {
-		fmt.Println("Error formatting code:", err)
-		return
-	}
-
-	// Crea la cartella tetsing se non esiste
-	folderPath := "./testing"
-	if _, err := os.Stat(folderPath); os.IsNotExist(err) {
-		err := os.MkdirAll(folderPath, 0755)
-		if err != nil {
-			fmt.Println("Error creating folder:", err)
-			return
-		}
-	}
-
-	// Specify the file path within the folder
-	filePath := folderPath + "/" + nameFile
-
-	// Crea un file e scrivi il codice generato al suo interno
-	outputFile, err := os.Create(filePath)
-	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
-	}
-	defer outputFile.Close()
-
-	_, err = outputFile.Write(formattedCode)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return
-	}
-	fmt.Println("Generated test code written to " + nameFile)
 }
 
-func generaMakeRequestPost(auth bool, method string, endpoint string, payload ast.AssignStmt) *ast.AssignStmt {
-	marshalStmt := &ast.AssignStmt{
-		Lhs: []ast.Expr{
-			&ast.Ident{Name: "requestBody"},
-			&ast.Ident{Name: "err"},
+// resp, err := makeRequest()
+//
+//	assert.NoError(t, err)
+//	assert.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+
+func CreateRequest(statusCode string) []ast.Stmt {
+	return []ast.Stmt{
+		&ast.AssignStmt{
+			Lhs: []ast.Expr{&ast.Ident{Name: "resp"}, &ast.Ident{Name: "err"}},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{&ast.CallExpr{
+				Fun: &ast.Ident{Name: "makeRequest"},
+			}},
 		},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{
-			&ast.CallExpr{
+		&ast.ExprStmt{
+			X: &ast.CallExpr{
 				Fun: &ast.SelectorExpr{
-					X:   &ast.Ident{Name: "json"},
-					Sel: &ast.Ident{Name: "Marshal"},
+					X:   &ast.Ident{Name: "assert"},
+					Sel: &ast.Ident{Name: "NoError"},
 				},
-				Args: []ast.Expr{&ast.Ident{Name: "requestPayload"}},
+				Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.Ident{Name: "err"}},
+			},
+		},
+		&ast.ExprStmt{
+			X: &ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   &ast.Ident{Name: "assert"},
+					Sel: &ast.Ident{Name: "Equal"},
+				},
+				Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.BasicLit{Kind: token.INT, Value: statusCode}, &ast.SelectorExpr{
+					X:   &ast.Ident{Name: "resp"},
+					Sel: &ast.Ident{Name: "StatusCode"},
+				}},
 			},
 		},
 	}
+}
+
+// client := &http.Client{}
+func CreateClient() *ast.AssignStmt {
+	return &ast.AssignStmt{
+		Lhs: []ast.Expr{&ast.Ident{Name: "client"}},
+		Tok: token.DEFINE,
+		Rhs: []ast.Expr{&ast.UnaryExpr{
+			Op: token.AND,
+			X: &ast.CompositeLit{
+				Type: &ast.Ident{Name: "http.Client"},
+			},
+		}},
+	}
+}
+func generaMakeRequestPost(auth bool, method string, endpoint string, payload ast.AssignStmt) *ast.AssignStmt {
+
+	marshalStmt := CreateJsonRequest()
 
 	// Create the http.NewRequest statement
-	newRequestStmt := &ast.AssignStmt{
-		Lhs: []ast.Expr{
-			&ast.Ident{Name: "req"},
-			&ast.Ident{Name: "err"},
-		},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{
-			&ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   &ast.Ident{Name: "http"},
-					Sel: &ast.Ident{Name: "NewRequest"},
-				},
-				Args: []ast.Expr{
-					&ast.BasicLit{Kind: token.STRING, Value: `"POST"`},
-					&ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%s\"", endpoint)},
-					&ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   &ast.Ident{Name: "bytes"},
-							Sel: &ast.Ident{Name: "NewBuffer"},
-						},
-						Args: []ast.Expr{
-							&ast.Ident{Name: "requestBody"},
-						},
-					},
-				},
-			},
-		},
-	}
+	newRequestStmt := CreateNewHTTPRequestPayload(`"POST"`, endpoint)
 
-	// Create the http.DefaultClient.Do statement
+	assertNoErrorStmt := CreateAssertError()
 
-	assertNoErrorStmt := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "assert"},
-				Sel: &ast.Ident{Name: "NoError"},
-			},
-			Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.Ident{Name: "err"}},
-		},
-	}
-	firstHeader := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.SelectorExpr{X: &ast.Ident{Name: "req"}, Sel: &ast.Ident{Name: "Header"}},
-				Sel: &ast.Ident{Name: "Set"},
-			},
-			Args: []ast.Expr{
-				&ast.BasicLit{Kind: token.STRING, Value: `"Content-Type"`},
-				&ast.BasicLit{Kind: token.STRING, Value: `"application/json"`},
-			},
-		},
-	}
-	tokenAssignment := &ast.AssignStmt{
-		Lhs: []ast.Expr{
-			&ast.Ident{Name: "token"},
-		},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{
-			&ast.CallExpr{
-				Fun: &ast.Ident{Name: "GetTestToken"},
-			},
-		},
-	}
-	authHeaderAssignment := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.SelectorExpr{X: &ast.Ident{Name: "req"}, Sel: &ast.Ident{Name: "Header"}},
-				Sel: &ast.Ident{Name: "Set"},
-			},
-			Args: []ast.Expr{
-				&ast.BasicLit{Kind: token.STRING, Value: `"Authorization"`},
-				&ast.BinaryExpr{
-					X:  &ast.BasicLit{Kind: token.STRING, Value: `"Bearer "`},
-					Op: token.ADD,
-					Y:  &ast.Ident{Name: "token"},
-				},
-			},
-		},
-	}
+	firstHeader := CreateHeader(`"Content-Type"`, `"application/json"`)
+
+	tokenAssignment := CreateFunctionGetTestToken()
+
+	authHeaderAssignment := CreateHeaderToken()
+
 	makeRequestAssignment := &ast.AssignStmt{}
+
+	client := CreateClient()
+
+	//start assembling makeRequest funciton
 	if auth {
 		makeRequestAssignment = &ast.AssignStmt{
 			Lhs: []ast.Expr{
-				ast.NewIdent("makeRequest"),
+				ast.NewIdent("makeRequest"), // name function
 			},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{
@@ -382,22 +197,13 @@ func generaMakeRequestPost(auth bool, method string, endpoint string, payload as
 					Type: &ast.FuncType{
 						Results: &ast.FieldList{
 							List: []*ast.Field{
-								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}},
+								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}}, // return type
 							},
 						},
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: "client"}},
-								Tok: token.DEFINE,
-								Rhs: []ast.Expr{&ast.UnaryExpr{
-									Op: token.AND,
-									X: &ast.CompositeLit{
-										Type: &ast.Ident{Name: "http.Client"},
-									},
-								}},
-							},
+							client,
 							&payload,
 							marshalStmt,
 							assertNoErrorStmt,
@@ -406,20 +212,7 @@ func generaMakeRequestPost(auth bool, method string, endpoint string, payload as
 							firstHeader,
 							tokenAssignment,
 							authHeaderAssignment,
-							&ast.IfStmt{
-								Cond: &ast.BinaryExpr{
-									X:  &ast.Ident{Name: "err"},
-									Op: token.NEQ,
-									Y:  ast.NewIdent("nil"),
-								},
-								Body: &ast.BlockStmt{
-									List: []ast.Stmt{
-										&ast.ReturnStmt{
-											Results: []ast.Expr{ast.NewIdent("nil"), &ast.Ident{Name: "err"}},
-										},
-									},
-								},
-							},
+							assertNoErrorStmt,
 							&ast.ReturnStmt{
 								Results: []ast.Expr{&ast.CallExpr{
 									Fun: &ast.SelectorExpr{
@@ -437,7 +230,7 @@ func generaMakeRequestPost(auth bool, method string, endpoint string, payload as
 	} else {
 		makeRequestAssignment = &ast.AssignStmt{
 			Lhs: []ast.Expr{
-				ast.NewIdent("makeRequest"),
+				ast.NewIdent("makeRequest"), // name function
 			},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{
@@ -445,42 +238,20 @@ func generaMakeRequestPost(auth bool, method string, endpoint string, payload as
 					Type: &ast.FuncType{
 						Results: &ast.FieldList{
 							List: []*ast.Field{
-								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}},
+								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}}, // return type
 							},
 						},
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: "client"}},
-								Tok: token.DEFINE,
-								Rhs: []ast.Expr{&ast.UnaryExpr{
-									Op: token.AND,
-									X: &ast.CompositeLit{
-										Type: &ast.Ident{Name: "http.Client"},
-									},
-								}},
-							},
+							client,
 							&payload,
 							marshalStmt,
 							assertNoErrorStmt,
 							newRequestStmt,
 							assertNoErrorStmt,
 							firstHeader,
-							&ast.IfStmt{
-								Cond: &ast.BinaryExpr{
-									X:  &ast.Ident{Name: "err"},
-									Op: token.NEQ,
-									Y:  ast.NewIdent("nil"),
-								},
-								Body: &ast.BlockStmt{
-									List: []ast.Stmt{
-										&ast.ReturnStmt{
-											Results: []ast.Expr{ast.NewIdent("nil"), &ast.Ident{Name: "err"}},
-										},
-									},
-								},
-							},
+							assertNoErrorStmt,
 							&ast.ReturnStmt{
 								Results: []ast.Expr{&ast.CallExpr{
 									Fun: &ast.SelectorExpr{
@@ -498,8 +269,132 @@ func generaMakeRequestPost(auth bool, method string, endpoint string, payload as
 	}
 	return makeRequestAssignment
 }
+func generateTestFunctionBodyPost(auth bool, nameFile, nameTest string, method string, endpoint string, payload ast.AssignStmt, maxRequest int, seconds int) {
 
-func generateForLoopBody() []ast.Stmt {
+	fset := token.NewFileSet()
+
+	// Package needed
+	importTestify := CreateImport(`"github.com/stretchr/testify/assert"`)
+
+	importHTTP := CreateImport(`"net/http"`)
+
+	importTesting := CreateImport(`"testing"`)
+
+	importTime := CreateImport(`"time"`)
+
+	importBytes := CreateImport(`"bytes"`)
+
+	importJSON := CreateImport(`"encoding/json"`)
+
+	importDecl := &ast.GenDecl{}
+
+	importDecl = &ast.GenDecl{
+		Tok:   token.IMPORT,
+		Specs: []ast.Spec{importJSON, importBytes, importTesting, importHTTP, importTestify, importTime},
+	}
+
+	// Create startTime := time.Now()
+	startTime := CreateStartTimeStm()
+
+	// Create i := 0
+	AssignI := CreateBasicStm("i", "0")
+
+	// Create for and his body
+	BodyFor := CreateFor("i", HTTPSTATUS_CREATED, maxRequest)
+
+	// Create endTime := time.Now()
+	endTime := CreateEndTime()
+
+	// elapsedTime := endTime.Sub(startTime)
+	elapsedTime := CreateElapsedTime()
+
+	// if elapsedTime.Seconds() < seconds
+	ifElapsed := CreateIfElapsed(seconds)
+
+	// time.Sleep(seconds * time.Second)
+	sleepTime := CreateSleep(seconds)
+
+	// Create last request
+	lastRequest := CreateRequest(HTTPSTATUS_CREATED)
+
+	lastMakeRequest := lastRequest[0]
+
+	assertNoError := lastRequest[1]
+
+	assertEqual := lastRequest[2]
+
+	stmts := []ast.Stmt{
+		sleepTime,
+		generaMakeRequestPost(auth, method, endpoint, payload),
+		startTime,
+		AssignI,
+		BodyFor,
+		endTime,
+		elapsedTime,
+		ifElapsed,
+		sleepTime,
+		lastMakeRequest,
+		assertNoError,
+		assertEqual,
+	}
+
+	// Create a string builder to hold the generated source code
+	var buf strings.Builder
+
+	// Create sign of the function and the body
+	funcDecl := CreateTest(nameTest, stmts)
+
+	decls := []ast.Decl{importDecl, funcDecl}
+
+	// Create a new file
+	file := CreateFile(decls, "test")
+
+	// Print code on buffer
+	err := printer.Fprint(&buf, fset, file)
+	if err != nil {
+		fmt.Println("Error printing code:", err)
+		return
+	}
+	// Format code
+	formattedCode, err := format.Source([]byte(buf.String()))
+	if err != nil {
+		fmt.Println("Error formatting code:", err)
+		return
+	}
+
+	// Create Folder if doesn't exist
+	folderPath := "./testing"
+	if _, err := os.Stat(folderPath); os.IsNotExist(err) {
+		err := os.MkdirAll(folderPath, 0755)
+		if err != nil {
+			fmt.Println("Error creating folder:", err)
+			return
+		}
+	}
+
+	// Specify the file path within the folder
+	filePath := folderPath + "/" + nameFile
+
+	// Create os file and put code inside
+	outputFile, err := os.Create(filePath)
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
+	defer outputFile.Close()
+
+	_, err = outputFile.Write(formattedCode)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return
+	}
+	fmt.Println("Generated test code written to " + nameFile)
+}
+
+// FINISH POST RATE LIMITER
+
+// START GET RATE LIMITER
+func generateForLoopBody(statusCode string) []ast.Stmt {
 	return []ast.Stmt{
 		&ast.AssignStmt{
 			Lhs: []ast.Expr{&ast.Ident{Name: "resp"}, &ast.Ident{Name: "err"}},
@@ -523,7 +418,7 @@ func generateForLoopBody() []ast.Stmt {
 					X:   &ast.Ident{Name: "assert"},
 					Sel: &ast.Ident{Name: "Equal"},
 				},
-				Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.BasicLit{Kind: token.INT, Value: "http.StatusOK"}, &ast.SelectorExpr{
+				Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.BasicLit{Kind: token.INT, Value: statusCode}, &ast.SelectorExpr{
 					X:   &ast.Ident{Name: "resp"},
 					Sel: &ast.Ident{Name: "StatusCode"},
 				}},
@@ -531,36 +426,20 @@ func generateForLoopBody() []ast.Stmt {
 		},
 	}
 }
+func CreateForGet(key string, statusCode string, maxRequests int) *ast.ForStmt {
 
-func generateRateLimitExceededCheck() []ast.Stmt {
-	return []ast.Stmt{
-		&ast.AssignStmt{
-			Lhs: []ast.Expr{&ast.Ident{Name: "resp"}, &ast.Ident{Name: "err"}},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{&ast.CallExpr{
-				Fun: &ast.Ident{Name: "makeRequest"},
-			}},
+	return &ast.ForStmt{
+		Cond: &ast.BinaryExpr{
+			X:  &ast.Ident{Name: key},
+			Op: token.LSS,
+			Y:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(maxRequests)},
 		},
-		&ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   &ast.Ident{Name: "assert"},
-					Sel: &ast.Ident{Name: "NoError"},
-				},
-				Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.Ident{Name: "err"}},
-			},
+		Post: &ast.IncDecStmt{
+			X:   &ast.Ident{Name: key},
+			Tok: token.INC,
 		},
-		&ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   &ast.Ident{Name: "assert"},
-					Sel: &ast.Ident{Name: "Equal"},
-				},
-				Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.BasicLit{Kind: token.INT, Value: "http.StatusTooManyRequests"}, &ast.SelectorExpr{
-					X:   &ast.Ident{Name: "resp"},
-					Sel: &ast.Ident{Name: "StatusCode"},
-				}},
-			},
+		Body: &ast.BlockStmt{
+			List: generateForLoopBody(statusCode),
 		},
 	}
 }
@@ -569,154 +448,45 @@ func generateTestFunctionBodyGet(auth bool, nameFile, nameTest string, method st
 	fset := token.NewFileSet()
 
 	// Importa i pacchetti necessari
-	importTestify := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"github.com/stretchr/testify/assert"`,
-		},
-	}
+	importTestify := CreateImport(`"github.com/stretchr/testify/assert"`)
 
-	importHTTP := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"net/http"`,
-		},
-	}
+	importHTTP := CreateImport(`"net/http"`)
 
-	importTesting := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"testing"`,
-		},
-	}
-	importTime := &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: `"time"`,
-		},
-	}
+	importTesting := CreateImport(`"testing"`)
+
+	importTime := CreateImport(`"time"`)
 
 	importDecl := &ast.GenDecl{
 		Tok:   token.IMPORT,
 		Specs: []ast.Spec{importTesting, importTestify, importHTTP, importTestify, importTime},
 	}
 	// Add the test logic
-	startTime := &ast.AssignStmt{
-		Lhs: []ast.Expr{&ast.Ident{Name: "startTime"}},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "time"},
-				Sel: &ast.Ident{Name: "Now"},
-			},
-		}},
-	}
+	startTime := CreateStartTimeStm()
 
-	AssignI := &ast.AssignStmt{
-		Lhs: []ast.Expr{&ast.Ident{Name: "i"}},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "0"}},
-	}
+	AssignI := CreateBasicStm("i", "0")
 
-	BodyFor := &ast.ForStmt{
-		Cond: &ast.BinaryExpr{
-			X:  &ast.Ident{Name: "i"},
-			Op: token.LSS,
-			Y:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(maxRequests)},
-		},
-		Post: &ast.IncDecStmt{
-			X:   &ast.Ident{Name: "i"},
-			Tok: token.INC,
-		},
-		Body: &ast.BlockStmt{
-			List: generateForLoopBody(),
-		},
-	}
+	BodyFor := CreateForGet("i", HTTPSTATUS_OK, maxRequests)
 
-	endTime := &ast.AssignStmt{
-		Lhs: []ast.Expr{&ast.Ident{Name: "endTime"}},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "time"},
-				Sel: &ast.Ident{Name: "Now"},
-			},
-		}},
-	}
+	endTime := CreateEndTime()
 
-	elapsedTime := &ast.AssignStmt{
-		Lhs: []ast.Expr{&ast.Ident{Name: "elapsedTime"}},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "endTime"},
-				Sel: &ast.Ident{Name: "Sub"},
-			},
-			Args: []ast.Expr{&ast.Ident{Name: "startTime"}},
-		}},
-	}
+	elapsedTime := CreateElapsedTime()
 
-	ifElapsed := &ast.IfStmt{
-		Cond: &ast.BinaryExpr{
-			X:  &ast.SelectorExpr{X: &ast.Ident{Name: "elapsedTime"}, Sel: &ast.Ident{Name: "Seconds()"}},
-			Op: token.LSS,
-			Y:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(seconds)},
-		},
-		Body: &ast.BlockStmt{
-			List: generateRateLimitExceededCheck(),
-		},
-	}
+	ifElapsed := CreateIfElapsed(seconds)
 
-	sleepTime := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "time"},
-				Sel: &ast.Ident{Name: "Sleep"},
-			},
-			Args: []ast.Expr{&ast.BinaryExpr{
-				X:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(seconds)},
-				Op: token.MUL,
-				Y: &ast.SelectorExpr{
-					X:   ast.NewIdent("time"),
-					Sel: ast.NewIdent("Second"),
-				},
-			}},
-		},
-	}
+	sleepTime := CreateSleep(seconds)
 
-	// Verifica che la quarta richiesta sia consentita dopo l'attesa
-	lastRequest := &ast.AssignStmt{
-		Lhs: []ast.Expr{&ast.Ident{Name: "resp"}, &ast.Ident{Name: "err"}},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun: &ast.Ident{Name: "makeRequest"},
-		}},
-	}
-	lastAssertNoError := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "assert"},
-				Sel: &ast.Ident{Name: "NoError"},
-			},
-			Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.Ident{Name: "err"}},
-		},
-	}
-	lastAsserEqual := &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "assert"},
-				Sel: &ast.Ident{Name: "Equal"},
-			},
-			Args: []ast.Expr{&ast.Ident{Name: "t"}, &ast.BasicLit{Kind: token.INT, Value: "http.StatusOK"}, &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "resp"},
-				Sel: &ast.Ident{Name: "StatusCode"},
-			}},
-		},
-	}
+	// Create last request
+	lastCompleteRequest := CreateRequest(HTTPSTATUS_OK)
+
+	lastRequest := lastCompleteRequest[0]
+
+	lastAssertNoError := lastCompleteRequest[1]
+
+	lastAsserEqual := lastCompleteRequest[2]
 
 	stmts := []ast.Stmt{
 		sleepTime,
-		generaMakeRequestGet(auth, "GET", endpoint),
+		generaMakeRequestGet(auth, `"GET"`, endpoint),
 		startTime,
 		AssignI,
 		BodyFor,
@@ -732,45 +502,29 @@ func generateTestFunctionBodyGet(auth bool, nameFile, nameTest string, method st
 	// Create a string builder to hold the generated source code
 	var buf strings.Builder
 
-	// Create a new function
-	funcDecl := &ast.FuncDecl{
-		Name: &ast.Ident{Name: nameTest},
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
-					{Names: []*ast.Ident{{Name: "t"}}, Type: &ast.Ident{Name: "*testing.T"}},
-				},
-			},
-			Results: &ast.FieldList{},
-		},
-		Body: &ast.BlockStmt{
-			List: stmts,
-		},
-	}
+	// Create sign of the function and the body
+	funcDecl := CreateTest(nameTest, stmts)
+
 	decls := []ast.Decl{importDecl, funcDecl}
 
 	// Create a new file
-	file := &ast.File{
-		Name:  &ast.Ident{Name: "main"},
-		Decls: decls,
-	}
+	file := CreateFile(decls, "test")
 
-	// Aggiungi le importazioni e la funzione di test alla lista di dichiarazioni
-
-	// Stampa il codice sorgente generato nel buffer
+	// Print code on buffer
 	err := printer.Fprint(&buf, fset, file)
 	if err != nil {
 		fmt.Println("Error printing code:", err)
 		return
 	}
-	// Formatta il codice sorgente nel buffer
+
+	// Format code
 	formattedCode, err := format.Source([]byte(buf.String()))
 	if err != nil {
 		fmt.Println("Error formatting code:", err)
 		return
 	}
 
-	// Crea la cartella tetsing se non esiste
+	// Create Folder if doesn't exist
 	folderPath := "./testing"
 	if _, err := os.Stat(folderPath); os.IsNotExist(err) {
 		err := os.MkdirAll(folderPath, 0755)
@@ -783,7 +537,7 @@ func generateTestFunctionBodyGet(auth bool, nameFile, nameTest string, method st
 	// Specify the file path within the folder
 	filePath := folderPath + "/" + nameFile
 
-	// Crea un file e scrivi il codice generato al suo interno
+	// Create os file and put code inside
 	outputFile, err := os.Create(filePath)
 	if err != nil {
 		fmt.Println("Error creating file:", err)
@@ -800,39 +554,22 @@ func generateTestFunctionBodyGet(auth bool, nameFile, nameTest string, method st
 }
 
 func generaMakeRequestGet(auth bool, method string, endpoint string) *ast.AssignStmt {
+
+	// Create token := GetTestToken()
+	tokenAssignment := CreateFunctionGetTestToken()
+	// Create req.Header.Set("Authorization", "Bearer "+token)
+	authHeaderAssignment := CreateHeaderToken()
+	client := CreateClient()
+	// Create the http.NewRequest statement
+	newRequestStmt := CreateNewHTTPRequest("GET", endpoint, nil)
+	// Create assert.NoError(t, err)
+	assertNoErrorStmt := CreateAssertError()
+
 	makeRequestAssignment := &ast.AssignStmt{}
 	if auth {
-		tokenAssignment := &ast.AssignStmt{
-			Lhs: []ast.Expr{
-				&ast.Ident{Name: "token"},
-			},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{
-				&ast.CallExpr{
-					Fun: &ast.Ident{Name: "GetTestToken"},
-				},
-			},
-		}
-		authHeaderAssignment := &ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   &ast.SelectorExpr{X: &ast.Ident{Name: "req"}, Sel: &ast.Ident{Name: "Header"}},
-					Sel: &ast.Ident{Name: "Set"},
-				},
-				Args: []ast.Expr{
-					&ast.BasicLit{Kind: token.STRING, Value: `"Authorization"`},
-					&ast.BinaryExpr{
-						X:  &ast.BasicLit{Kind: token.STRING, Value: `"Bearer "`},
-						Op: token.ADD,
-						Y:  &ast.Ident{Name: "token"},
-					},
-				},
-			},
-		}
-
 		makeRequestAssignment = &ast.AssignStmt{
 			Lhs: []ast.Expr{
-				ast.NewIdent("makeRequest"),
+				ast.NewIdent("makeRequest"), // name of the function
 			},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{
@@ -840,53 +577,17 @@ func generaMakeRequestGet(auth bool, method string, endpoint string) *ast.Assign
 					Type: &ast.FuncType{
 						Results: &ast.FieldList{
 							List: []*ast.Field{
-								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}},
+								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}}, // return type
 							},
 						},
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: "client"}},
-								Tok: token.DEFINE,
-								Rhs: []ast.Expr{&ast.UnaryExpr{
-									Op: token.AND,
-									X: &ast.CompositeLit{
-										Type: &ast.Ident{Name: "http.Client"},
-									},
-								}},
-							},
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: "req"}, &ast.Ident{Name: "err"}},
-								Tok: token.DEFINE,
-								Rhs: []ast.Expr{&ast.CallExpr{
-									Fun: &ast.SelectorExpr{
-										X:   &ast.Ident{Name: "http"},
-										Sel: &ast.Ident{Name: "NewRequest"},
-									},
-									Args: []ast.Expr{
-										&ast.BasicLit{Kind: token.STRING, Value: `"GET"`},
-										&ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%s\"", endpoint)},
-										ast.NewIdent("nil"),
-									},
-								}},
-							},
+							client,
+							newRequestStmt,
 							tokenAssignment,
 							authHeaderAssignment,
-							&ast.IfStmt{
-								Cond: &ast.BinaryExpr{
-									X:  &ast.Ident{Name: "err"},
-									Op: token.NEQ,
-									Y:  ast.NewIdent("nil"),
-								},
-								Body: &ast.BlockStmt{
-									List: []ast.Stmt{
-										&ast.ReturnStmt{
-											Results: []ast.Expr{ast.NewIdent("nil"), &ast.Ident{Name: "err"}},
-										},
-									},
-								},
-							},
+							assertNoErrorStmt,
 							&ast.ReturnStmt{
 								Results: []ast.Expr{&ast.CallExpr{
 									Fun: &ast.SelectorExpr{
@@ -901,10 +602,10 @@ func generaMakeRequestGet(auth bool, method string, endpoint string) *ast.Assign
 				},
 			},
 		}
-	} else {
+	} else { // case of no auth
 		makeRequestAssignment = &ast.AssignStmt{
 			Lhs: []ast.Expr{
-				ast.NewIdent("makeRequest"),
+				ast.NewIdent("makeRequest"), //name funtion
 			},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{
@@ -912,51 +613,15 @@ func generaMakeRequestGet(auth bool, method string, endpoint string) *ast.Assign
 					Type: &ast.FuncType{
 						Results: &ast.FieldList{
 							List: []*ast.Field{
-								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}},
+								{Names: []*ast.Ident{{Name: "*http.Response, "}}, Type: &ast.Ident{Name: "error"}}, //return type
 							},
 						},
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: "client"}},
-								Tok: token.DEFINE,
-								Rhs: []ast.Expr{&ast.UnaryExpr{
-									Op: token.AND,
-									X: &ast.CompositeLit{
-										Type: &ast.Ident{Name: "http.Client"},
-									},
-								}},
-							},
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: "req"}, &ast.Ident{Name: "err"}},
-								Tok: token.DEFINE,
-								Rhs: []ast.Expr{&ast.CallExpr{
-									Fun: &ast.SelectorExpr{
-										X:   &ast.Ident{Name: "http"},
-										Sel: &ast.Ident{Name: "NewRequest"},
-									},
-									Args: []ast.Expr{
-										&ast.BasicLit{Kind: token.STRING, Value: `"GET"`},
-										&ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%s\"", endpoint)},
-										ast.NewIdent("nil"),
-									},
-								}},
-							},
-							&ast.IfStmt{
-								Cond: &ast.BinaryExpr{
-									X:  &ast.Ident{Name: "err"},
-									Op: token.NEQ,
-									Y:  ast.NewIdent("nil"),
-								},
-								Body: &ast.BlockStmt{
-									List: []ast.Stmt{
-										&ast.ReturnStmt{
-											Results: []ast.Expr{ast.NewIdent("nil"), &ast.Ident{Name: "err"}},
-										},
-									},
-								},
-							},
+							client,
+							newRequestStmt,
+							assertNoErrorStmt,
 							&ast.ReturnStmt{
 								Results: []ast.Expr{&ast.CallExpr{
 									Fun: &ast.SelectorExpr{

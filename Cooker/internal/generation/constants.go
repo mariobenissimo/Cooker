@@ -1,0 +1,9 @@
+package generation
+
+const (
+	HTTPSTATUS_CREATED        = "201"
+	HTTPSTATUS_OK             = "200"
+	HTTPSTATUS_UNAUTHORIZED   = "401"
+	HTTPSTATUS_BADREQUEST     = "400"
+	HTTPSTATUS_TOOMANYREQUEST = "429"
+)
