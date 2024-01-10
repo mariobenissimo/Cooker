@@ -15,18 +15,13 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Docker Compose
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
           docker-compose --version
-
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.19.1
 
       - name: Build and run Docker Compose
         run: |
@@ -38,7 +33,7 @@ jobs:
           echo "start first sleep"
           sleep 20
 
-      - name: Print Container
+      - name: Excute Test
         run: |
           docker exec cooker go test ./...
 

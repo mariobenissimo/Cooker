@@ -2,7 +2,6 @@ package generation
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,7 +19,6 @@ func Cook(directoryPath string) {
 		if err != nil {
 			return err
 		}
-
 		// Process only .json files
 		if filepath.Ext(path) == ".json" {
 			// Read the content of the JSON file
@@ -31,8 +29,7 @@ func Cook(directoryPath string) {
 				fmt.Println("Error reading JSON file:", err)
 				return nil
 			}
-
-			// Create an instance of YourStruct to unmarshal the JSON data into
+			// Create an instance of APIConfig to unmarshal the JSON data into
 			var apiConfig models.APIConfig
 
 			// Unmarshal the JSON data into the struct
@@ -42,8 +39,9 @@ func Cook(directoryPath string) {
 				return nil
 			}
 
-			// Print the populated struct
+			// Print the file name
 			fmt.Printf("File: %s\n", path)
+			// Check rules
 			err = checkApiConfig(apiConfig)
 			if err != nil {
 				fmt.Println("Error checking correcting json", err)
@@ -60,12 +58,9 @@ func Cook(directoryPath string) {
 	}
 }
 
-// Lista di metodi endpoint
-var methods = []string{"GET", "POST", "PUT", "DELETE"}
-
-// Controlla se un metodo fa parte della lista di metodi endpoint
+// check if the method is allow
 func isAllowMethods(method string) error {
-	// Confronta il metodo in modo case-insensitive
+	// check in case-insensitive
 	method = strings.ToUpper(method)
 	for _, m := range methods {
 		if m == method {
@@ -75,14 +70,8 @@ func isAllowMethods(method string) error {
 	return ErrMethodNotAllow
 }
 
-var ErrMethodNotAllow = errors.New("method not allow")
-
-var ErrAutenticationMethodNotAllow = errors.New("autentication method not allow")
-
-var autenticationMethods = []string{"JWT"}
-
 func isAllowAutenticationMethods(method string) error {
-	// Confronta il metodo in modo case-insensitive
+	// Check in mode case-insensitive
 	method = strings.ToUpper(method)
 	for _, m := range autenticationMethods {
 		if m == method {
@@ -92,12 +81,8 @@ func isAllowAutenticationMethods(method string) error {
 	return ErrAutenticationMethodNotAllow
 }
 
-var ErrTypeNotAllow = errors.New("type not allow")
-
-var types = []string{"STRING", "INT", "UUID"}
-
 func isAllowType(typ string) error {
-	// Confronta il metodo in modo case-insensitive
+	// check method mode case-insensitive
 	typ = strings.ToUpper(typ)
 	for _, m := range types {
 		if m == typ {
@@ -106,12 +91,6 @@ func isAllowType(typ string) error {
 	}
 	return ErrTypeNotAllow
 }
-
-var ErrNoMaxLengthProvided = errors.New("no max length for string provided")
-var ErrNoRangeProvided = errors.New("no range for int provided")
-var ErrNegativeMaxLengthProvided = errors.New("max length negative provided")
-var ErrInvalidRangeProvided = errors.New("max length negative provided")
-var ErrNoExpectationLengthProvided = errors.New("no expectation length provided")
 
 func isValidRangePattern(pattern *string) error {
 	// Check if the pattern matches the format "number - number" or "number-number"
@@ -163,16 +142,19 @@ func checkApiConfig(apiConfig models.APIConfig) error {
 		return err
 	}
 	if apiConfig.Authentication != nil {
+		//check if method for authentication is allowed
 		if err := isAllowAutenticationMethods(apiConfig.Authentication.Method); err != nil {
 			return err
 		}
 	}
 	if apiConfig.Method == "get" {
+		// check if exp. length provided
 		if apiConfig.ExpectationLength == nil {
 			return ErrNoExpectationLengthProvided
 		}
 	}
 	for _, parameter := range apiConfig.Parameters {
+		//check if the type is allowed
 		if err := isAllowType(parameter.Type); err != nil {
 			return err
 		}

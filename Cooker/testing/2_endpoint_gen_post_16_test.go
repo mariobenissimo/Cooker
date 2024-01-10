@@ -10,7 +10,7 @@ import (
 
 func TestPostIncorrectIntValueBoolean12_endpoint(t *testing.T) {
 	requestPayload := map[string]interface {
-	}{"Età": true, "Nome": "aa"}
+	}{"Nome": "aa", "Età": true}
 	requestBody, err := json.Marshal(requestPayload)
 	assert.NoError(t, err)
 	req, err := http.NewRequest("POST", "http://apigateway:8000/auth/user", bytes.NewBuffer(requestBody))
