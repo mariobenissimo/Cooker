@@ -10,7 +10,7 @@ import (
 
 func TestPostUpperStringValue02_endpoint(t *testing.T) {
 	requestPayload := map[string]interface {
-	}{"Nome": "zcqvcjKD9dCKeE0h85HfoTLWAB58NjJDGQtRDjhhRlKHO5FWtvx", "Età": 10.000000}
+	}{"Età": 10.000000, "Nome": "LyR7hyKLCTNwwSmNjXn1hkslzmWSx4q3gbuKu2uEROaaeeOltND"}
 	requestBody, err := json.Marshal(requestPayload)
 	assert.NoError(t, err)
 	req, err := http.NewRequest("POST", "http://apigateway:8000/auth/user", bytes.NewBuffer(requestBody))

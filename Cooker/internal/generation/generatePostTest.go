@@ -85,11 +85,11 @@ func GenerateTestEndpointPost(apiConfig models.APIConfig, nameFile string) {
 		if value == "int" {
 
 			genericPayload := copyPayload(correctPayload)
-			genericPayload[nameField[index]] = minValue //try to send a lower int value
+			genericPayload[nameField[index]] = *minValue //try to send a lower int value
 			payload := createGenericPayloadCode(genericPayload)
 			GenerateTestEndpointCorrectInt(auth, endpoint, payload, HTTPSTATUS_BADREQUEST, nameFile+"_gen_post_"+strconv.Itoa(index)+"2_test.go", "TestPostUpperIntValue"+strconv.Itoa(index)+nameFile)
 
-			genericPayload[nameField[index]] = MaxValue //try to send a upper Int value
+			genericPayload[nameField[index]] = *MaxValue //try to send a upper Int value
 			payload = createGenericPayloadCode(genericPayload)
 			GenerateTestEndpointCorrectInt(auth, endpoint, payload, HTTPSTATUS_BADREQUEST, nameFile+"_gen_post_"+strconv.Itoa(index)+"3_test.go", "TestPostLowerIntValue"+strconv.Itoa(index)+nameFile)
 

@@ -10,7 +10,7 @@ import (
 
 func TestPostLowerIntValue12_endpoint(t *testing.T) {
 	requestPayload := map[string]interface {
-	}{"Nome": "aa", "Età": "unsupported"}
+	}{"Nome": "aa", "Età": 101}
 	requestBody, err := json.Marshal(requestPayload)
 	assert.NoError(t, err)
 	req, err := http.NewRequest("POST", "http://apigateway:8000/auth/user", bytes.NewBuffer(requestBody))
